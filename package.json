@@ -2,7 +2,7 @@
   "name": "gifstream",
   "version": "1.0.0",
   "description": "A JavaScript library for creating high resolution GIFs",
-  "main": "index.js",
+  "main": "./src/js/gif.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
