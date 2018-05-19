@@ -1,8 +1,8 @@
-gifstream is a JavaScript tool for creating large animated graphics on the web.
+gifStream is a JavaScript tool for creating large animated graphics on the web.
 
 ## Install
 
-`npm i -S gifstream`
+`npm i -S @entryline/gifstream`
 
 ## Example Usage
 
