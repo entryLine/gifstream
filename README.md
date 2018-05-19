@@ -1,4 +1,10 @@
-## Create GIF
+gifstream is a JavaScript tool for creating large animated graphics on the web.
+
+## Install
+
+`npm i -S gifstream`
+
+## Example Usage
 
 ```javascript
   import GifStream from 'gifStream'
@@ -35,5 +41,9 @@
     }, onGifComplete);
   };
 ```
+
 ## Credits
-Coming soon...
+
+gifstream would like to thank the following individuals and origanization for whom this project would not have been possible without:
+
+@benJaki2, @ZachTRice, @nasa-gibs, Worldview, @jimmywarting, @gfranko, @ChaseWest
