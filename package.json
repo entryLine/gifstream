@@ -1,5 +1,5 @@
 {
-  "name": "gifstream",
+  "name": "@entryline/gifstream",
   "version": "1.0.0",
   "description": "A JavaScript library for creating high resolution GIFs",
   "main": "./src/js/gif.js",
