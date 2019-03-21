@@ -1,10 +1,9 @@
-import GifWriter from 'gifwriter';
-import NeuQuant from 'neuquant';
-import Promise from 'bluebird';
-import { ReadableStream } from 'web-streams-polyfill';
+import GifWriter from "gifwriter";
+import NeuQuant from "neuquant";
+import Promise from "bluebird";
+import { ReadableStream } from "web-streams-polyfill";
 
-
-export default class gifCreater {
+export default class GifStream {
   constructor() {
     this.canvas = null;
     this.ctx = null;
@@ -39,10 +38,22 @@ export default class gifCreater {
       waterMarkXCoordinate,
       waterMarkYCoordinate
     } = options;
-    const textXCoordinate = options.textXCoordinate ? options.textXCoordinate : textAlign === 'left' ? 1 : textAlign === 'right' ? gifWidth : gifWidth / 2;
-    const textYCoordinate = options.textYCoordinate ? options.textYCoordinate : textBaseline === 'top' ? 1 : textBaseline === 'center' ? gifHeight / 2 : gifHeight;
-    const font = fontWeight + ' ' + fontSize + ' ' + fontFamily;
-    const textToUse = (frameText && options.showFrameText) ? frameText : text;
+    const textXCoordinate = options.textXCoordinate
+      ? options.textXCoordinate
+      : textAlign === "left"
+      ? 1
+      : textAlign === "right"
+      ? gifWidth
+      : gifWidth / 2;
+    const textYCoordinate = options.textYCoordinate
+      ? options.textYCoordinate
+      : textBaseline === "top"
+      ? 1
+      : textBaseline === "center"
+      ? gifHeight / 2
+      : gifHeight;
+    const font = fontWeight + " " + fontSize + " " + fontFamily;
+    const textToUse = frameText && options.showFrameText ? frameText : text;
 
     try {
       ctx.drawImage(img, 0, 0, gifWidth, gifHeight);
@@ -60,11 +71,17 @@ export default class gifCreater {
         ctx.fillText(textToUse, textXCoordinate, textYCoordinate);
       }
       if (waterMark) {
-        ctx.drawImage(waterMark, waterMarkXCoordinate, waterMarkYCoordinate, waterMarkWidth, waterMarkHeight);
+        ctx.drawImage(
+          waterMark,
+          waterMarkXCoordinate,
+          waterMarkYCoordinate,
+          waterMarkWidth,
+          waterMarkHeight
+        );
       }
       return ctx;
     } catch (e) {
-      return '' + e;
+      return "" + e;
     }
   }
   /**
@@ -75,16 +92,21 @@ export default class gifCreater {
    * @return {void}
    */
   createGIF(options, callback) {
-    if (this.canvas) this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.canvas = document.createElement('canvas');
-    this.ctx = this.canvas.getContext('2d');
+    if (this.canvas)
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.canvas = document.createElement("canvas");
+    this.ctx = this.canvas.getContext("2d");
     this.options = options;
     this.canvas.width = options.gifWidth;
     this.canvas.height = options.gifHeight;
+
     var imagePromiseArray = [];
-    for(var i = 0, len = options.images.length; i < len; i++) {
-      imagePromiseArray.push(this.getImagePromise(options.images[i]).catch(returnError));
-    } 
+    if (options.images.length < 1) {
+      throw "No images found";
+    }
+    options.images.forEach(imageObj => {
+      imagePromiseArray.push(this.getImagePromise(imageObj).catch(returnError));
+    });
     function returnError(e) {
       const callbackObj = {
         blob: null,
@@ -92,32 +114,40 @@ export default class gifCreater {
       };
       callback(callbackObj);
     }
-    Promise.all(imagePromiseArray).then((images) => {
+    Promise.all(imagePromiseArray).then(images => {
       var gifStream = this.getStream(images, this.ctx);
       var reader = gifStream.getReader();
       var chunks = [];
-
-      function pull() {
-        return reader.read().then(function (result) {
-          const chunk = result.value;
-          if (chunk) {
-            chunks.push(new Uint8Array(chunk));
-            // for (var offset = 0; offset < chunk.length; offset += 512) {
-            //   let sliceOfChunk = chunk.slice(offset, offset + 512);
-            //   let byteArray = new Uint8Array(sliceOfChunk);
-            //   chunks.push(byteArray);
-            // }
-          }
-          return result.done ? chunks : pull();
-        });
-      };
-      pull().then(function (chunks) {
+      var processedImages = 1;
+      function finished(chunks) {
         const callbackObj = {
-          blob: new Blob(chunks, { type: 'image/gif' }),
-          error: ''
+          blob: new Blob(chunks, { type: "image/gif" }),
+          error: ""
         };
         callback(callbackObj);
-      });
+      }
+
+      function pull() {
+        const imageLength = options.images.length;
+        return reader.read().then(function(result) {
+          const chunk = result.value;
+          if (result.done) {
+            finished(chunks);
+          } else {
+            chunks.push(new Uint8Array(chunk));
+            options.progressCallback(
+              Math.round((processedImages / imageLength) * 100)
+            );
+            processedImages++;
+            setTimeout(function() {
+              // This was needed in order for callback to be applied
+              return pull();
+            }, 10);
+          }
+        });
+      }
+      options.progressCallback(0);
+      pull();
     });
   }
   getImagePromise(frame) {
@@ -127,13 +157,14 @@ export default class gifCreater {
       img.height = this.options.gifHeight;
       img.text = frame.text;
       img.delay = frame.delay;
-      img.crossOrigin = 'Anonymous';
+      img.crossOrigin = "Anonymous";
       img.onload = () => {
+        URL.revokeObjectURL(img.src); // Free up some memory
         resolve(img);
         delete img.onload;
         delete img.onerror;
       };
-      img.onerror = (e) => {
+      img.onerror = e => {
         reject(e);
         delete img.onload;
         delete img.onerror;
@@ -158,16 +189,24 @@ export default class gifCreater {
       pull: function pull(controller) {
         var frame = frames.shift();
         if (!frame) controller.close();
-        var imgData, rgbComponents, paletteRGB, nq, paletteArray, numberPixels, pixels;
+        var imgData,
+          rgbComponents,
+          paletteRGB,
+          nq,
+          paletteArray,
+          numberPixels,
+          pixels;
         var r, g, b;
         var k = 0;
-        var delay = (frame.delay) ? frame.delay / 10 : 100;
+        var delay = frame.delay ? frame.delay / 10 : 100;
         processedImages++;
-        delay = (processedImages === totalImages && options.extraLastFrameDelay) ? delay + (options.extraLastFrameDelay / 10) : delay;// Add an extra
-        options.progressCallback(Math.round((processedImages / totalImages) * 100));
+        delay =
+          processedImages === totalImages && options.extraLastFrameDelay
+            ? delay + options.extraLastFrameDelay / 10
+            : delay; // Add an extra
         ctx = self.addFrameDetails(ctx, frame);
         imgData = ctx.getImageData(0, 0, width, height);
-        rgbComponents = dataToRGB(imgData.data, imgData.height, imgData.height);
+        rgbComponents = dataToRGB(imgData.data, imgData.width, imgData.height);
         nq = new NeuQuant(rgbComponents, rgbComponents.length, 15);
         paletteRGB = nq.process();
         paletteArray = new Uint32Array(componentizedPaletteToArray(paletteRGB));
@@ -179,10 +218,17 @@ export default class gifCreater {
           b = rgbComponents[k++];
           pixels[i] = nq.map(r, g, b);
         }
-        controller.enqueue([0, 0, width, height, pixels, {
-          palette: paletteArray,
-          delay: delay
-        }]);
+        controller.enqueue([
+          0,
+          0,
+          width,
+          height,
+          pixels,
+          {
+            palette: paletteArray,
+            delay: delay
+          }
+        ]);
       }
     });
     return new GifWriter(rs, width, height, {
@@ -199,10 +245,10 @@ function componentizedPaletteToArray(paletteRGB) {
     r = paletteRGB[i];
     g = paletteRGB[i + 1];
     b = paletteRGB[i + 2];
-    paletteArray.push(r << 16 | g << 8 | b);
+    paletteArray.push((r << 16) | (g << 8) | b);
   }
   return paletteArray;
-};
+}
 // part of neuquant conversion
 function dataToRGB(data, width, height) {
   var i = 0;
