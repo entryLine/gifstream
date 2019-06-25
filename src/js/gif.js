@@ -2,7 +2,7 @@ import GifWriter from "gifwriter";
 import NeuQuant from "neuquant";
 import Promise from "bluebird";
 import { ReadableStream } from "web-streams-polyfill";
-
+Promise.config({ cancellation: true });
 export default class GifStream {
   constructor() {
     this.canvas = null;
@@ -114,7 +114,7 @@ export default class GifStream {
       };
       callback(callbackObj);
     }
-    Promise.all(imagePromiseArray).then(images => {
+    return Promise.all(imagePromiseArray).then(images => {
       var gifStream = this.getStream(images, this.ctx);
       var reader = gifStream.getReader();
       var chunks = [];
@@ -151,7 +151,7 @@ export default class GifStream {
     });
   }
   getImagePromise(frame) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject, onCancel) => {
       var img = new Image();
       img.width = this.options.gifWidth;
       img.height = this.options.gifHeight;
@@ -170,6 +170,9 @@ export default class GifStream {
         delete img.onerror;
       };
       img.src = frame.src;
+      onCancel(() => {
+        img.src = ""; // https://stackoverflow.com/a/5278475
+      });
     });
   }
   /**
