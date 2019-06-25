@@ -7,11 +7,11 @@ gifStream is a JavaScript tool for creating large animated graphics on the web.
 ## Example Usage
 
 ```javascript
-  import GifStream from 'gifStream'
+  import GifStream from '@entryline/gifstream';
 
   const gifStream = new GifStream();
 
-  gifStream.createGIF({
+  const promise = gifStream.createGIF({
     'gifWidth': 100, // (Number in pixels) required
     'gifHeight': 100, // (Number in pixels) required
     'images': [
@@ -41,7 +41,19 @@ gifStream is a JavaScript tool for creating large animated graphics on the web.
     }, onGifComplete);
   };
 ```
+## Cancel requests
+Tested in chrome, Edge, and Firefox
 
+```javascript
+createGif() {
+  this.promise = gifStream.createGIF({this.options})
+}
+componentWillUnmount() {
+  if (this.promise) {
+    this.promise.cancel();
+  }
+}
+  ```
 ## Credits
 
 gifstream would like to thank the following individuals and origanization for whom this project would not have been possible without:
