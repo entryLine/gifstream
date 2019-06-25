@@ -46,11 +46,12 @@ Tested in chrome, Edge, and Firefox
 
 ```javascript
 createGif() {
-  this.promise = gifStream.createGIF({this.options})
+  gifStream.createGIF({this.options})
+  this.isDownloading = true;
 }
 componentWillUnmount() {
-  if (this.promise) {
-    this.promise.cancel();
+  if (this.isDownloading) {
+    gifStream.cancel();
   }
 }
   ```
