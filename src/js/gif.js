@@ -122,7 +122,6 @@ export default class GifStream {
         error: e
       };
       callback(callbackObj);
-      this.canceller = null;
     }
     function returnCancel() {
       console.warn("GIF creation has been cancelled");
@@ -139,7 +138,6 @@ export default class GifStream {
           blob: new Blob(chunks, { type: "image/gif" }),
           error: ""
         };
-        this.canceller = null;
         callback(callbackObj);
       };
 
