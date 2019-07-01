@@ -2,7 +2,7 @@ import GifWriter from "gifwriter";
 import NeuQuant from "neuquant";
 import Promise from "bluebird";
 import { ReadableStream } from "web-streams-polyfill";
-
+Promise.config({ cancellation: true });
 export default class GifStream {
   constructor() {
     this.canvas = null;
@@ -84,6 +84,14 @@ export default class GifStream {
       return "" + e;
     }
   }
+  cancel() {
+    this.cancelled = true;
+    if (this.promise) {
+      this.promise.cancel();
+    } else {
+      this.cancelled = true;
+    }
+  }
   /**
    * Create GIF from options
    *
@@ -95,6 +103,7 @@ export default class GifStream {
     if (this.canvas)
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.canvas = document.createElement("canvas");
+    this.cancelled = false;
     this.ctx = this.canvas.getContext("2d");
     this.options = options;
     this.canvas.width = options.gifWidth;
@@ -114,44 +123,51 @@ export default class GifStream {
       };
       callback(callbackObj);
     }
-    Promise.all(imagePromiseArray).then(images => {
+    function returnCancel() {
+      console.warn("GIF creation has been cancelled");
+      callback({ cancelled: true });
+    }
+
+    this.promise = Promise.all(imagePromiseArray).then(images => {
       var gifStream = this.getStream(images, this.ctx);
       var reader = gifStream.getReader();
       var chunks = [];
       var processedImages = 1;
-      function finished(chunks) {
+      const finished = chunks => {
         const callbackObj = {
           blob: new Blob(chunks, { type: "image/gif" }),
           error: ""
         };
         callback(callbackObj);
-      }
+      };
 
-      function pull() {
+      const pull = () => {
         const imageLength = options.images.length;
-        return reader.read().then(function(result) {
+        return reader.read().then(result => {
           const chunk = result.value;
           if (result.done) {
             finished(chunks);
+          } else if (this.cancelled) {
+            returnCancel();
           } else {
             chunks.push(new Uint8Array(chunk));
             options.progressCallback(
               Math.round((processedImages / imageLength) * 100)
             );
             processedImages++;
-            setTimeout(function() {
+            setTimeout(() => {
               // This was needed in order for callback to be applied
               return pull();
             }, 10);
           }
         });
-      }
+      };
       options.progressCallback(0);
       pull();
     });
   }
   getImagePromise(frame) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject, onCancel) => {
       var img = new Image();
       img.width = this.options.gifWidth;
       img.height = this.options.gifHeight;
@@ -170,6 +186,9 @@ export default class GifStream {
         delete img.onerror;
       };
       img.src = frame.src;
+      onCancel(() => {
+        img.src = ""; // https://stackoverflow.com/a/5278475
+      });
     });
   }
   /**
