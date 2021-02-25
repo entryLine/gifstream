@@ -1,13 +1,14 @@
-import GifWriter from "gifwriter";
-import NeuQuant from "neuquant";
-import Promise from "bluebird";
-import { ReadableStream } from "web-streams-polyfill";
+import GifWriter from 'gifwriter';
+import NeuQuant from 'neuquant';
+import Promise from 'bluebird';
+import { ReadableStream } from 'web-streams-polyfill';
 Promise.config({ cancellation: true });
 export default class GifStream {
   constructor() {
     this.canvas = null;
     this.ctx = null;
   }
+
   /**
    * Add frame contents to canvas
    *
@@ -40,19 +41,19 @@ export default class GifStream {
     } = options;
     const textXCoordinate = options.textXCoordinate
       ? options.textXCoordinate
-      : textAlign === "left"
-      ? 1
-      : textAlign === "right"
-      ? gifWidth
-      : gifWidth / 2;
+      : textAlign === 'left'
+        ? 1
+        : textAlign === 'right'
+          ? gifWidth
+          : gifWidth / 2;
     const textYCoordinate = options.textYCoordinate
       ? options.textYCoordinate
-      : textBaseline === "top"
-      ? 1
-      : textBaseline === "center"
-      ? gifHeight / 2
-      : gifHeight;
-    const font = fontWeight + " " + fontSize + " " + fontFamily;
+      : textBaseline === 'top'
+        ? 1
+        : textBaseline === 'center'
+          ? gifHeight / 2
+          : gifHeight;
+    const font = fontWeight + ' ' + fontSize + ' ' + fontFamily;
     const textToUse = frameText && options.showFrameText ? frameText : text;
 
     try {
@@ -81,9 +82,10 @@ export default class GifStream {
       }
       return ctx;
     } catch (e) {
-      return "" + e;
+      return '' + e;
     }
   }
+
   cancel() {
     this.cancelled = true;
     if (this.promise) {
@@ -92,6 +94,7 @@ export default class GifStream {
       this.cancelled = true;
     }
   }
+
   /**
    * Create GIF from options
    *
@@ -100,18 +103,17 @@ export default class GifStream {
    * @return {void}
    */
   createGIF(options, callback) {
-    if (this.canvas)
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.canvas = document.createElement("canvas");
+    if (this.canvas) { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
+    this.canvas = document.createElement('canvas');
     this.cancelled = false;
-    this.ctx = this.canvas.getContext("2d");
+    this.ctx = this.canvas.getContext('2d');
     this.options = options;
     this.canvas.width = options.gifWidth;
     this.canvas.height = options.gifHeight;
 
     var imagePromiseArray = [];
     if (options.images.length < 1) {
-      throw "No images found";
+      throw new Error('No images found');
     }
     options.images.forEach(imageObj => {
       imagePromiseArray.push(this.getImagePromise(imageObj).catch(returnError));
@@ -124,8 +126,11 @@ export default class GifStream {
       callback(callbackObj);
     }
     function returnCancel() {
-      console.warn("GIF creation has been cancelled");
-      callback({ cancelled: true });
+      console.warn('GIF creation has been cancelled');
+      const callbackObj = {
+        cancelled: true
+      };
+      callback(callbackObj);
     }
 
     this.promise = Promise.all(imagePromiseArray).then(images => {
@@ -135,8 +140,8 @@ export default class GifStream {
       var processedImages = 1;
       const finished = chunks => {
         const callbackObj = {
-          blob: new Blob(chunks, { type: "image/gif" }),
-          error: ""
+          blob: new Blob(chunks, { type: 'image/gif' }),
+          error: ''
         };
         callback(callbackObj);
       };
@@ -166,6 +171,7 @@ export default class GifStream {
       pull();
     });
   }
+
   getImagePromise(frame) {
     return new Promise((resolve, reject, onCancel) => {
       var img = new Image();
@@ -173,7 +179,7 @@ export default class GifStream {
       img.height = this.options.gifHeight;
       img.text = frame.text;
       img.delay = frame.delay;
-      img.crossOrigin = "Anonymous";
+      img.crossOrigin = 'Anonymous';
       img.onload = () => {
         URL.revokeObjectURL(img.src); // Free up some memory
         resolve(img);
@@ -187,10 +193,11 @@ export default class GifStream {
       };
       img.src = frame.src;
       onCancel(() => {
-        img.src = ""; // https://stackoverflow.com/a/5278475
+        img.src = ''; // https://stackoverflow.com/a/5278475
       });
     });
   }
+
   /**
    * Generate GIF-creating Stream
    * @param  {Array} frames Array of GIF image objects
