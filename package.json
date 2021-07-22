@@ -24,7 +24,7 @@
   "homepage": "https://github.com/entryLine/gifstream#readme",
   "dependencies": {
     "bluebird": "^3.5.1",
-    "web-streams-polyfill": "^2.0.4"
+    "web-streams-polyfill": "^3.1.0"
   },
   "devDependencies": {
     "eslint": "^6.4.0",
